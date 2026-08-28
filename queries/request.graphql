@@ -1,0 +1,684 @@
+# Rich uiPage explorer query — validated against client-api.stg.vix.tv/gql/v2
+# Variables: $urlPath (ID!), $uiModulesPagination, $contentPagination (PaginationParams)
+
+fragment ImageAssetFields on ImageAsset {
+  mediaType
+  filePath
+  link
+  imageRole
+  resizedLink(height: 720, width: 1280)
+}
+
+fragment PageInfoFields on PageInfo {
+  hasNextPage
+  hasPreviousPage
+  startCursor
+  endCursor
+  itemCount
+  currentPage
+  pageCount
+}
+
+fragment VideoTitleFields on VideoContent {
+  id
+  mcpId
+  title
+  headline
+  description
+  dateReleased
+  yearReleased
+  language
+  videoType
+  isKids
+  requiresSubscription
+  genres
+  genresV2 {
+    name
+    slug
+  }
+  badges
+  contentVertical
+  keywords
+  ratings {
+    ratingValue
+    ratingSubValues
+    ratingSourceLink
+  }
+  contributors {
+    name
+    slug
+    roles
+  }
+  imageAssets {
+    ...ImageAssetFields
+  }
+  detailPageMetadata {
+    title
+    description
+    canonicalUrl
+    altUrls
+  }
+  videoTypeData {
+    __typename
+    ... on VideoTypeSeriesData {
+      seasonsCount
+      episodesCount
+      seriesSubType
+    }
+    ... on VideoTypeEpisodeData {
+      episodeNumber
+      episodeType
+      shortCode
+      season {
+        id
+        title
+        yearReleased
+      }
+      series {
+        id
+        title
+      }
+      playbackData {
+        streamMetadata {
+          duration
+        }
+      }
+    }
+    ... on VideoTypeMovieData {
+      playbackData {
+        streamMetadata {
+          duration
+        }
+      }
+    }
+    ... on VideoTypeExtraData {
+      extraType
+      playbackData {
+        streamMetadata {
+          duration
+        }
+      }
+    }
+  }
+}
+
+fragment VideoCardFields on UiVideoCard {
+  __typename
+  id
+  title
+  image {
+    ...ImageAssetFields
+  }
+  heroImage {
+    ...ImageAssetFields
+  }
+  logoImage {
+    ...ImageAssetFields
+  }
+  clickTrackingJson
+  video {
+    ...VideoTitleFields
+  }
+}
+
+# Lean identity for personalized rails (CW / Mi lista / Recommended). Avoid
+# duplicating full VideoTitleFields under multiple inline fragments (complexity).
+# Same lean item fragment is used on editorial VIDEO_CAROUSEL so a leading
+# UiVideoCarouselItem is not dropped (that shifts the live #1 title to slot 2).
+fragment LeanVideoIdentityFields on VideoContent {
+  id
+  mcpId
+  title
+  videoType
+  videoTypeData {
+    __typename
+    ... on VideoTypeEpisodeData {
+      series {
+        id
+        title
+      }
+    }
+  }
+}
+
+# Editorial VIDEO_CAROUSEL contents are a union; UiVideoCard-only fragments omit
+# the first CMS tile when it is a UiVideoCarouselItem (later titles shift to x=2).
+fragment VideoCarouselItemFields on UiVideoCarouselItem {
+  __typename
+  id
+  title
+  video {
+    ...LeanVideoIdentityFields
+  }
+}
+
+query UiPageExplorer(
+  $urlPath: ID!
+  $uiModulesPagination: PaginationParams
+  $contentPagination: PaginationParams
+) {
+  uiPage(urlPath: $urlPath) {
+    urlPath
+    pageName
+    provider
+    pageMetadata {
+      title
+      description
+      canonicalUrl
+      altUrls
+      uploadDate
+      breadcrumbs {
+        title
+        urlPath
+      }
+      og {
+        title
+        type
+        url
+        description
+        locale
+        siteName
+        image {
+          url
+          type
+          width
+          height
+          alt
+        }
+      }
+      twitter {
+        card
+        site
+        title
+        description
+        image
+        imageAlt
+      }
+    }
+    pageAnalyticsMetadata {
+      keyValues {
+        key
+        value
+      }
+    }
+    uiModules(pagination: $uiModulesPagination) {
+      totalCount
+      pageInfo {
+        ...PageInfoFields
+      }
+      edges {
+        cursor
+        node {
+          __typename
+          moduleType
+          trackingMetadataJson
+          ... on UiVideoCarousel {
+            id
+            trackingId
+            title
+            caption
+            treatment
+            isPlaylist
+            collectionId
+            items {
+              __typename
+              ... on UiVideoCard {
+                ...VideoCardFields
+              }
+              ... on UiVideoCarouselItem {
+                ...VideoCarouselItemFields
+              }
+            }
+            collection {
+              totalCount
+            }
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiHeroCarousel {
+            id
+            trackingId
+            title
+            scrollingTimeSeconds
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  textTitle
+                  heroTargetContentType
+                  portraitFillImage {
+                    ...ImageAssetFields
+                  }
+                  landscapeFillImage {
+                    ...ImageAssetFields
+                  }
+                  mobileFillImage {
+                    ...ImageAssetFields
+                  }
+                  ctvFillImage {
+                    ...ImageAssetFields
+                  }
+                  logoImage {
+                    ...ImageAssetFields
+                  }
+                  clickTrackingJson
+                  heroTarget {
+                    __typename
+                    ... on VideoContent {
+                      ...VideoTitleFields
+                    }
+                    ... on EpgChannel {
+                      id
+                      title
+                      name
+                      callSign
+                    }
+                    ... on SportsEvent {
+                      id
+                      title
+                      name
+                      sportsEventId
+                      localTeamName
+                      awayTeamName
+                    }
+                    ... on UiPage {
+                      urlPath
+                      pageName
+                    }
+                    ... on UiHeroPage {
+                      ctaText
+                      ctaUrlPath
+                    }
+                    ... on UiHeroPromo {
+                      ctaText
+                      ctaUrlPath
+                    }
+                    ... on UiHeroClips {
+                      ctaUrlPath
+                      collectionId
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on UiTrendingNowCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiRecommendedForYouCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                  ... on UiVideoCarouselItem {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on UiMixedContentCarousel {
+            id
+            trackingId
+            title
+            caption
+            treatment
+            isPlaylist
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiBecauseYouCarousel {
+            id
+            trackingId
+            textTitle
+            source
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  video {
+                    ...VideoTitleFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiPageCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  name
+                  urlPath
+                  image {
+                    ...ImageAssetFields
+                  }
+                  cardImage {
+                    ...ImageAssetFields
+                  }
+                  clickTrackingJson
+                }
+              }
+            }
+          }
+          ... on UiContinueWatchingCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                  ... on UiVideoCarouselItem {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on UiWatchlistCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                  ... on UiVideoCarouselItem {
+                    id
+                    title
+                    video {
+                      ...LeanVideoIdentityFields
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on UiRecentChannelsCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  channelId
+                  channel {
+                    id
+                    title
+                  }
+                  image {
+                    ...ImageAssetFields
+                  }
+                  logoImage {
+                    ...ImageAssetFields
+                  }
+                  clickTrackingJson
+                }
+              }
+            }
+          }
+          ... on UiInlinePage {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+            clickTrackingJson
+            portraitFillImage {
+              ...ImageAssetFields
+            }
+            landscapeFillImage {
+              ...ImageAssetFields
+            }
+            mobileFillImage {
+              ...ImageAssetFields
+            }
+            ctvFillImage {
+              ...ImageAssetFields
+            }
+          }
+          ... on UiInlinePromo {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+            clickTrackingJson
+            portraitFillImage {
+              ...ImageAssetFields
+            }
+            landscapeFillImage {
+              ...ImageAssetFields
+            }
+            mobileFillImage {
+              ...ImageAssetFields
+            }
+            ctvFillImage {
+              ...ImageAssetFields
+            }
+          }
+          ... on UiLiveVideoCarousel {
+            id
+            trackingId
+            title
+            treatment
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  channelId
+                  title
+                  name
+                  textTitle
+                  channel {
+                    id
+                    title
+                    name
+                    callSign
+                  }
+                  liveChannel {
+                    id
+                    title
+                    name
+                    callSign
+                  }
+                  video {
+                    ...VideoTitleFields
+                  }
+                  image {
+                    ...ImageAssetFields
+                  }
+                  logoImage {
+                    ...ImageAssetFields
+                  }
+                  clickTrackingJson
+                }
+              }
+            }
+          }
+          ... on UiSportsEventCarousel {
+            id
+            trackingId
+            title
+            treatment
+            sportId
+            leagueId
+            isLive
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  sportsEventId
+                  title
+                  name
+                  textTitle
+                  localTeamName
+                  awayTeamName
+                  compositeImageLink
+                  tournamentLogo {
+                    ...ImageAssetFields
+                  }
+                  tournamentCardBackground {
+                    ...ImageAssetFields
+                  }
+                  localTeamLogo {
+                    ...ImageAssetFields
+                  }
+                  awayTeamLogo {
+                    ...ImageAssetFields
+                  }
+                  clickTrackingJson
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

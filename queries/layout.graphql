@@ -1,0 +1,443 @@
+# Lean uiPage layout query — identity + placement only (layout CSV / compare).
+# PagePaginator lists all uiModules first (queries/layout_modules.graphql,
+# first: totalCount, no after), then hydrates one rail at a time with this
+# query so $contentPagination is never shared across the page.
+# Explore/page keep the richer queries/request.graphql (cast, blurbs, images).
+# Fat VideoTitleFields × contents first ≈ rail length scored complexity 109776 / 100000.
+# This file requests no cast, long blurbs, image CDN graphs, or extra video metadata
+# so a full module contents connection fits under the 100k budget.
+# Variables: $urlPath (ID!), $uiModulesPagination, $contentPagination (PaginationParams)
+
+fragment PageInfoFields on PageInfo {
+  hasNextPage
+  endCursor
+  itemCount
+}
+
+# Title + ids only. Episode rails (CW) still need parent series for the poster title.
+fragment LeanVideoIdentityFields on VideoContent {
+  id
+  mcpId
+  title
+  videoType
+  videoTypeData {
+    __typename
+    ... on VideoTypeEpisodeData {
+      series {
+        id
+        title
+      }
+    }
+  }
+}
+
+fragment VideoCardFields on UiVideoCard {
+  __typename
+  id
+  title
+  video {
+    ...LeanVideoIdentityFields
+  }
+}
+
+# Editorial VIDEO_CAROUSEL contents are a union; UiVideoCard-only fragments omit
+# the first CMS tile when it is a UiVideoCarouselItem (later titles shift to x=2).
+fragment VideoCarouselItemFields on UiVideoCarouselItem {
+  __typename
+  id
+  title
+  video {
+    ...LeanVideoIdentityFields
+  }
+}
+
+query UiPageLayout(
+  $urlPath: ID!
+  $uiModulesPagination: PaginationParams
+  $contentPagination: PaginationParams
+) {
+  uiPage(urlPath: $urlPath) {
+    urlPath
+    pageName
+    provider
+    uiModules(pagination: $uiModulesPagination) {
+      totalCount
+      pageInfo {
+        ...PageInfoFields
+      }
+      edges {
+        cursor
+        node {
+          __typename
+          moduleType
+          ... on UiVideoCarousel {
+            id
+            trackingId
+            title
+            treatment
+            isPlaylist
+            collectionId
+            # CMS LAYOUTS pin list when the module exposes one (manually ordered
+            # editorial tiles). Prefer this over contents, which may be the
+            # backing collection (ranked / longer / rotated). If the schema
+            # types items as a Connection, the client rewrites this selection
+            # to edges/node instead of stripping it (stripping falls back to
+            # contents.totalCount catalog dumps — Exclusivo x=119).
+            items {
+              __typename
+              ... on UiVideoCard {
+                ...VideoCardFields
+              }
+              ... on UiVideoCarouselItem {
+                ...VideoCarouselItemFields
+              }
+            }
+            # Backing collection size when distinct from the carousel connection.
+            # contents.totalCount < collection.totalCount → contents is the rail.
+            # Stripped on schema mismatch.
+            collection {
+              totalCount
+            }
+            # Ranked/playlist/infinite: paginate contents(after) until hasNextPage
+            # is false or unique edges stabilize. Editorial: use items, or the
+            # first layout page's contents.edges (visible window) — do not treat
+            # contents.totalCount as rail length when it is the backing catalog.
+            # PagePaginator always sends contents `first` (never empty
+            # PaginationParams: schema default first=10 is not CMS LAYOUTS length).
+            # first is remaining totalCount only for playlist/ranked rails,
+            # clamped by a GraphQL complexity ceiling. Do not send first:80/100
+            # as a catalog dump when items is the rail.
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiHeroCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  textTitle
+                  heroTargetContentType
+                  heroTarget {
+                    __typename
+                    ... on VideoContent {
+                      ...LeanVideoIdentityFields
+                    }
+                    ... on EpgChannel {
+                      id
+                      title
+                      name
+                      callSign
+                    }
+                    ... on SportsEvent {
+                      id
+                      title
+                      name
+                      sportsEventId
+                      localTeamName
+                      awayTeamName
+                    }
+                    ... on UiPage {
+                      urlPath
+                      pageName
+                    }
+                    ... on UiHeroPage {
+                      ctaText
+                      ctaUrlPath
+                    }
+                    ... on UiHeroPromo {
+                      ctaText
+                      ctaUrlPath
+                    }
+                    ... on UiHeroClips {
+                      ctaUrlPath
+                      collectionId
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on UiTrendingNowCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiRecommendedForYouCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiMixedContentCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiBecauseYouCarousel {
+            id
+            trackingId
+            textTitle
+            source
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  video {
+                    ...LeanVideoIdentityFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiPageCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  id
+                  name
+                  urlPath
+                }
+              }
+            }
+          }
+          ... on UiContinueWatchingCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiWatchlistCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  ... on UiVideoCard {
+                    ...VideoCardFields
+                  }
+                  ... on UiVideoCarouselItem {
+                    ...VideoCarouselItemFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiRecentChannelsCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  channelId
+                  channel {
+                    id
+                    title
+                  }
+                }
+              }
+            }
+          }
+          ... on UiInlinePage {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+          }
+          ... on UiInlinePromo {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+          }
+          ... on UiLiveVideoCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  channelId
+                  title
+                  name
+                  textTitle
+                  channel {
+                    id
+                    title
+                    name
+                    callSign
+                  }
+                  liveChannel {
+                    id
+                    title
+                    name
+                    callSign
+                  }
+                  video {
+                    ...LeanVideoIdentityFields
+                  }
+                }
+              }
+            }
+          }
+          ... on UiSportsEventCarousel {
+            id
+            trackingId
+            title
+            contents(pagination: $contentPagination) {
+              totalCount
+              pageInfo {
+                ...PageInfoFields
+              }
+              edges {
+                cursor
+                node {
+                  __typename
+                  id
+                  sportsEventId
+                  title
+                  name
+                  textTitle
+                  localTeamName
+                  awayTeamName
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

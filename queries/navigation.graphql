@@ -1,0 +1,43 @@
+# Navigation + bootstrap discovery (staging/prod client-api gql/v2)
+
+query UiNavigationBootstrap {
+  clientConfig {
+    defaultUrlPath
+  }
+  uiNavigation {
+    id
+    menuType
+    trackingId
+    sections {
+      items {
+        id
+        text
+        urlPath
+        action
+        itemType
+        iconName
+        icon {
+          link
+        }
+        subItems {
+          id
+          text
+          urlPath
+          action
+          itemType
+          iconName
+          icon {
+            link
+          }
+          subItems {
+            id
+            text
+            urlPath
+            action
+            itemType
+          }
+        }
+      }
+    }
+  }
+}

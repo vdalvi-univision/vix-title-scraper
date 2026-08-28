@@ -1,0 +1,49 @@
+# Place your ViX uiPage query here.
+# Required variables: $urlPath, $uiModulesPagination, $contentPagination, $minCount, $hours
+#
+# Example shape (replace with the real query from Insomnia/network tab):
+#
+# query UiPage(
+#   $urlPath: String!
+#   $uiModulesPagination: PaginationInput
+#   $contentPagination: PaginationInput
+#   $minCount: Int
+#   $hours: Int
+# ) {
+#   uiPage(urlPath: $urlPath) {
+#     uiModules(pagination: $uiModulesPagination) {
+#       pageInfo { hasNextPage endCursor }
+#       edges {
+#         node {
+#           ... on UiVideoCarousel {
+#             id
+#             title
+#             moduleType
+#             contents(pagination: $contentPagination) {
+#               pageInfo { hasNextPage endCursor }
+#               edges {
+#                 node {
+#                   ... on UiVideoCarouselItem {
+#                     id
+#                     video {
+#                       id
+#                       title
+#                       description
+#                       dateReleased
+#                       videoType
+#                       genresV2 { name }
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }
+
+query REPLACE_WITH_YOUR_VIX_UIPAGE_QUERY {
+  __typename
+}

@@ -1,0 +1,117 @@
+# Cheap uiModules index — identity + edge cursors only, no content fields.
+#
+# Why WC breaks the old first:1 walk and ODP usually does not:
+# /ondemandplus is the ungated control page; first:1 returns Hero plus a real
+# module endCursor so a 1-rail walk can continue. /ondemandpluswc is the Statsig
+# / install-id treatment. The same first:1 layout query often returns Hero,
+# totalCount≈30, hasNextPage=false, and no endCursor — PageInfo lies, 29 rails
+# are never requested. Yesterday WC still had ~973 titles, so this is not
+# “WC is a 1-module page” or missing AUTH_TOKEN_WC.
+#
+# Robust path (both pages): probe totalCount → this query with
+# pagination { first: totalCount } from offset 0 (no after) → hydrate each
+# module’s contents separately via queries/layout.graphql (one rail per
+# contents after). Do not depend on module PageInfo.endCursor to discover rails.
+#
+# Variables: $urlPath (ID!), $uiModulesPagination (PaginationParams)
+
+query UiPageModulesIndex(
+  $urlPath: ID!
+  $uiModulesPagination: PaginationParams
+) {
+  uiPage(urlPath: $urlPath) {
+    urlPath
+    pageName
+    uiModules(pagination: $uiModulesPagination) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+        itemCount
+      }
+      edges {
+        cursor
+        node {
+          __typename
+          moduleType
+          ... on UiVideoCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiHeroCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiTrendingNowCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiRecommendedForYouCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiMixedContentCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiBecauseYouCarousel {
+            id
+            trackingId
+            textTitle
+          }
+          ... on UiPageCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiContinueWatchingCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiWatchlistCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiRecentChannelsCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiInlinePage {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+          }
+          ... on UiInlinePromo {
+            id
+            trackingId
+            title
+            textTitle
+            ctaText
+            ctaUrlPath
+          }
+          ... on UiLiveVideoCarousel {
+            id
+            trackingId
+            title
+          }
+          ... on UiSportsEventCarousel {
+            id
+            trackingId
+            title
+          }
+        }
+      }
+    }
+  }
+}

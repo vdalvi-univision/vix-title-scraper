@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.env
+.env.local
+.env.*.local
+
+# Outputs
+*.csv
+!examples/*.csv
+output/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Snapshots (local only)
+*.json
+!examples/*.json

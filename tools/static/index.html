@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-store"/>
+  <title>ViX · Title lookup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="icon" href="/static/vix-logo.png"/>
+  <link rel="stylesheet" href="/static/app.css?v=ui16"/>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/">
+        <img class="logo" src="/static/vix-logo.png" alt="ViX" width="155" height="60"/>
+      </a>
+      <div class="rail-head">
+        <h2>History</h2>
+        <button type="button" class="btn-ghost btn-danger" id="btnDeleteAllHistory">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>
+          Clear history
+        </button>
+      </div>
+      <div class="history-list" id="historyList">
+        <p class="empty">No scrapes yet.</p>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <p class="banner" id="fileWarn" hidden>
+        Open via http://127.0.0.1:8765/ — not as a local file.
+      </p>
+
+      <p class="intro">Title Look Up</p>
+
+      <section class="section" id="pages" aria-labelledby="pagesHeading">
+        <h2 id="pagesHeading">Pages</h2>
+        <p class="hint">At least one page is required. Add up to <span id="maxPagesLabel">4</span>.</p>
+        <div class="page-editor" id="pageEditor"></div>
+        <button type="button" class="btn-ghost" id="btnAddPage">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Add page
+        </button>
+      </section>
+
+      <section class="section" id="credentials" aria-labelledby="authHeading">
+        <h2 id="authHeading">Authorization</h2>
+        <p class="hint">Authorization, user token, and installation ID are required.</p>
+        <div class="fields-3">
+          <div class="field">
+            <label for="authToken">Authorization</label>
+            <input id="authToken" type="password" autocomplete="off" placeholder="Bearer token" required/>
+          </div>
+          <div class="field">
+            <label for="userToken">User token</label>
+            <input id="userToken" type="password" autocomplete="off" placeholder="x-vix-user-token" required/>
+          </div>
+          <div class="field">
+            <label for="installId">Installation ID</label>
+            <input id="installId" type="text" autocomplete="off" placeholder="x-vix-installation-id" required/>
+          </div>
+        </div>
+        <label class="check remember">
+          <input id="persistLocal" type="checkbox"/>
+          Remember on this computer
+        </label>
+      </section>
+
+      <section class="section" id="devices" aria-labelledby="deviceHeading">
+        <h2 id="deviceHeading">Device</h2>
+        <p class="hint">Platform and device type are sent as GraphQL headers.</p>
+        <div class="fields-2" id="deviceFields">
+          <div class="field">
+            <label for="platformSelect">Platform</label>
+            <select id="platformSelect"></select>
+          </div>
+          <div class="field">
+            <label for="deviceTypeSelect">Device type</label>
+            <select id="deviceTypeSelect"></select>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="scrape" aria-labelledby="scrapeHeading">
+        <div class="scrape-row">
+          <div>
+            <h2 id="scrapeHeading">Scrape</h2>
+            <p class="hint">Run a scrape with the pages, tokens, and device above.</p>
+          </div>
+          <div class="scrape-actions">
+            <button type="button" class="btn-primary" id="btnScrape">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+              Scrape data
+            </button>
+          </div>
+        </div>
+        <div class="status-box" id="scrapeStatus"></div>
+      </section>
+
+      <section class="section progress-section" id="progressSection" hidden aria-labelledby="progressHeading">
+        <h2 id="progressHeading" class="visually-hidden">Progress</h2>
+        <div class="progress-wrap" id="progressWrap" hidden>
+          <div
+            class="progress-bar"
+            id="progressBar"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+            aria-label="Scrape progress"
+          >
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-label" id="progressLabel" hidden></div>
+        </div>
+      </section>
+
+      <section class="section section-last" id="comparison" aria-labelledby="compareHeading">
+        <h2 id="compareHeading">Comparison</h2>
+        <p class="hint" id="compareHint">Pick scrapes and pages. Search a title, or view full page layouts side by side.</p>
+        <form id="compareForm">
+          <div class="fields-2">
+            <div class="field">
+              <label for="runA">Scrape A</label>
+              <select id="runA"></select>
+            </div>
+            <div class="field">
+              <label for="runB">Scrape B</label>
+              <select id="runB">
+                <option value="">—</option>
+              </select>
+            </div>
+          </div>
+          <div class="field pages-field">
+            <span class="field-label" id="pagesFieldLabel">Pages</span>
+            <div class="page-checks" id="pageChecks" role="group" aria-labelledby="pagesFieldLabel">
+              <span class="muted">Load a scrape first.</span>
+            </div>
+          </div>
+          <div class="view-toggle" role="tablist" aria-label="Comparison view">
+            <button type="button" class="is-active" id="viewSearch" role="tab" aria-selected="true">Search titles</button>
+            <button type="button" id="viewLayouts" role="tab" aria-selected="false">Page layouts</button>
+          </div>
+          <div class="search-row" id="searchRow">
+            <div class="field grow">
+              <label for="q">Search</label>
+              <div class="input-with-icon">
+                <svg class="icon icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="q" name="q" type="search" placeholder="Title or row name" autocomplete="off" autofocus/>
+              </div>
+            </div>
+            <button type="submit" class="btn-secondary" id="btnCompare">Search</button>
+          </div>
+        </form>
+        <div class="status-box" id="compareStatus"></div>
+        <div class="results" id="compareOut">
+          <p class="empty">Search a title to see placements, or open Page layouts.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=ui16"></script>
+</body>
+</html>
